@@ -9,10 +9,17 @@
     "@babel/core": "^7.4.3",
     "@babel/plugin-proposal-class-properties": "^7.4.0",
     "@babel/plugin-transform-react-jsx": "^7.3.0",
-    "@babel/preset-env": "^7.4.3"
+    "@babel/preset-env": "^7.4.3",
+    "ava": "^1.4.1",
+    "rollup": "^1.10.1",
+    "rollup-plugin-babel": "^4.3.2",
+    "rollup-plugin-terser": "^4.0.4",
+    "rollup-watch": "^4.3.1"
   },
   "scripts": {
-    "build": "babel -w test.js --out-file test-compiled.js"
+    "watch": "rollup -c -w",
+    "build": "rollup -c",
+    "test": "ava"
   },
   "keywords": [],
   "author": "",
