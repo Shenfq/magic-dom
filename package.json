@@ -1,0 +1,20 @@
+{
+  "name": "magic-dom",
+  "description": "virtual dom library",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@babel/cli": "^7.4.3",
+    "@babel/core": "^7.4.3",
+    "@babel/plugin-proposal-class-properties": "^7.4.0",
+    "@babel/plugin-transform-react-jsx": "^7.3.0",
+    "@babel/preset-env": "^7.4.3"
+  },
+  "scripts": {
+    "build": "babel -w test.js --out-file test-compiled.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT"
+}
