@@ -19,7 +19,8 @@
   "scripts": {
     "watch": "rollup -c -w",
     "build": "rollup -c",
-    "test": "ava"
+    "test": "npm run babel & ava",
+    "babel": "babel test-src/*.js -d test"
   },
   "keywords": [],
   "author": "",

@@ -1,13 +1,17 @@
-import test from 'ava'
-
-import {
-  h, diff, types
-} from '../dist/magic-dom'
-
+import test from 'ava';
+import { h, diff, types } from '../dist/magic-dom';
 const {
-  UPDATE, REPLACE
-} = types
-
+  UPDATE,
+  REPLACE
+} = types;
+test('h', t => {
+  const vdom = h("div", null, h("p", null, "hello ", h("del", null, "world")), h("p", null, "hello ", h("b", null, "world")), h("p", null, "hello world ", h("span", null, "!!!")));
+  vdom.children.forEach(element => {
+    console.info(element);
+  });
+  t.pass();
+});
+/* 
 test('test diff', t => {
   const left = h("div", { className: "test" }, "Left")
   const right = h("div", { className: "test" }, "Right")
@@ -18,3 +22,4 @@ test('test diff', t => {
   t.is(childPatch.type, REPLACE)
   t.is(childPatch.newNode, 'Left')
 })
+ */
