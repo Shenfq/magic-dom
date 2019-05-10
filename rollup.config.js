@@ -1,5 +1,7 @@
+import json from 'rollup-plugin-json'
 import babel from 'rollup-plugin-babel'
-import { terser } from "rollup-plugin-terser"
+import { eslint } from './rollup-eslint'
+import { terser } from 'rollup-plugin-terser'
 
 const production = !process.env.ROLLUP_WATCH
 
@@ -11,6 +13,14 @@ export default {
     format: 'umd'
   },
   plugins: [
+    json(),
+    eslint({
+      fix: true,
+      include: [
+        'lib/**',
+      ],
+      throwOnError: true
+    }),
     babel({
       babelrc: false,
       presets: [
