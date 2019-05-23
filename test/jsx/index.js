@@ -2,7 +2,7 @@ import test from 'ava'
 
 import {
   h, diff, types
-} from '../dist/magic-dom'
+} from '../../dist/magic-dom'
 
 const {
   UPDATE, REPLACE

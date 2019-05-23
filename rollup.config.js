@@ -1,6 +1,6 @@
 import json from 'rollup-plugin-json'
 import babel from 'rollup-plugin-babel'
-import { eslint } from './rollup-eslint'
+import { eslint } from 'rollup-plugin-eslint'
 import { terser } from 'rollup-plugin-terser'
 
 const production = !process.env.ROLLUP_WATCH
