@@ -1,14 +1,9 @@
 import test from 'ava'
 
-import {
-  h, diff, types
-} from '../../dist/magic-dom'
+import { h, diff } from '../../dist/magic-dom'
+import { url } from 'inspector'
 
-const {
-  UPDATE, REPLACE
-} = types
-
-test('h', t => {
+/* test('h', t => {
   const vdom = <div>
     <p>hello <del>world</del></p>
     <p>hello <b>world</b></p>
@@ -18,16 +13,26 @@ test('h', t => {
   console.info(vdom)
   
   t.pass()
-})
-/* 
-test('test diff', t => {
-  const left = h("div", { className: "test" }, "Left")
-  const right = h("div", { className: "test" }, "Right")
+}) */
+
+test('diff', t => {
+  const array = [1, 2, 3, 4, 5]
+  const left = (
+    <ul>
+      {array.map(i => (
+        <li key={i}>i</li>
+      ))}
+    </ul>
+  )
+  const right = (
+    <ul>
+      {array.reverse().map(i => (
+        <li key={i}>{i}</li>
+      ))}
+    </ul>
+  )
+  console.log('left', left)
+  console.log('right', right)
   const patches = diff(left, right)
-  const childPatch = patches.children[0]
-  
-  t.is(patches.type, UPDATE)
-  t.is(childPatch.type, REPLACE)
-  t.is(childPatch.newNode, 'Left')
+  console.info('patches', JSON.stringify(patches))
 })
- */

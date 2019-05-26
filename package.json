@@ -27,8 +27,9 @@
   "scripts": {
     "dev": "rollup -c -w",
     "build": "rollup -c",
-    "test": "npm run babel & ava test/js/*.js",
-    "babel": "babel test/jsx/*.js -d test/js"
+    "test": "npm run babel & npm run ava",
+    "babel": "babel test/jsx/*.js -d test/js",
+    "ava": "ava test/js/*.js"
   },
   "keywords": [],
   "author": "",

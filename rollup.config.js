@@ -10,28 +10,26 @@ export default {
   output: {
     name: 'magic',
     file: 'dist/magic-dom.js', // 输出文件
-    format: 'umd'
+    format: 'es',
   },
   plugins: [
     json(),
     eslint({
       fix: true,
-      include: [
-        'lib/**',
-      ],
-      throwOnError: true
+      include: ['lib/**'],
+      // throwOnError: true,
     }),
     babel({
       babelrc: false,
       presets: [
         [
-          "@babel/preset-env",
+          '@babel/preset-env',
           {
-            modules: false
-          }
-        ]
-      ]
+            modules: false,
+          },
+        ],
+      ],
     }),
-    production && terser()
-  ]
+    production && terser(),
+  ],
 }

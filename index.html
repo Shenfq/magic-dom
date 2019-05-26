@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+<body>
+  <script type="module">
+    import { h, diff } from './dist/magic-dom'
+    const array = [0, 1, 2];
+    const left = h("ul", {data: 'a'}, array.map(i => h("li", {
+      key: i
+    }, i)));
+    const array2 = array.reverse()
+    array2.push('x')
+    const right = h("ul", {data: 'b'}, array2.map(i => h("li", {
+      key: i
+    }, i)));
+    console.log('left', left);
+    console.log('right', right);
+    const patches = diff(left, right);
+    console.info('patches', patches);
+  </script>
+</body>
+</html>
