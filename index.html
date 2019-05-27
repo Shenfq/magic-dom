@@ -8,14 +8,11 @@
 </head>
 <body>
   <script type="module">
-    import { h, diff } from './dist/magic-dom'
-    const array = [0, 1, 2];
-    const left = h("ul", {data: 'a'}, array.map(i => h("li", {
+    import { h, diff } from './dist/magic-dom.js'
+    const left = h("ul", {data: 'a'}, [0, 2, 3].map(i => h("li", {
       key: i
     }, i)));
-    const array2 = array.reverse()
-    array2.push('x')
-    const right = h("ul", {data: 'b'}, array2.map(i => h("li", {
+    const right = h("ul", {data: 'b'}, [3, 2, 1, 0, 'x'].map(i => h("li", {
       key: i
     }, i)));
     console.log('left', left);

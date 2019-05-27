@@ -87,13 +87,13 @@ var types = /*#__PURE__*/Object.freeze({
  * @param {vdom} oldNode
  */
 
-function diff(newNode, oldNode) {
+function diff(oldNode, newNode) {
   var patches = [];
-  walk(newNode, oldNode, patches, 0);
+  walk(oldNode, newNode, patches, 0);
   return patches;
 }
 
-function walk(newNode, oldNode, patches, index) {
+function walk(oldNode, newNode, patches, index) {
   if (newNode === oldNode) {
     return;
   }
@@ -125,7 +125,8 @@ function walk(newNode, oldNode, patches, index) {
           });
         }
 
-        patch = diffChildren(newNode, oldNode, patches, patch, index);
+        patch = diffChildren(oldNode, newNode, patches, patch, index);
+        console.log('patch ==========>', patch);
       }
     } else {
       // 新节点替换旧节点
@@ -181,18 +182,18 @@ function diffProps(newProps, oldProps) {
 }
 /**
  *
- * @param {vdom} newNode
  * @param {vdom} oldNode
+ * @param {vdom} newNode
  * @param {Array} patches
  * @param {Object} patch
  * @param {Number} index
  */
 
 
-function diffChildren(newNode, oldNode, patches, patch, index) {
+function diffChildren(oldNode, newNode, patches, patch, index) {
   var oldChildren = oldNode.children; // 新节点重新排序
 
-  var sortedSet = sortChildren(newNode.children, oldChildren);
+  var sortedSet = sortChildren(oldChildren, newNode.children);
   var newChildren = sortedSet.children;
   var oldLen = oldChildren.length;
   var newLen = newChildren.length;
@@ -228,12 +229,12 @@ function diffChildren(newNode, oldNode, patches, patch, index) {
 }
 /**
  * 子节点顺序对比，key值相同的子节点只进行顺序调整
- * @param {Array} newChildren 变化后的子节点
  * @param {Array} oldChildren 变化前的子节点
+ * @param {Array} newChildren 变化后的子节点
  */
 
 
-function sortChildren(newChildren, oldChildren) {
+function sortChildren(oldChildren, newChildren) {
   // 找出变化后的子节点中带 key 的 vdom (keys)，和不带 key 的 vdom (free)
   var newChildIndex = keyIndex(newChildren);
   var newKeys = newChildIndex.keys;
@@ -262,8 +263,8 @@ function sortChildren(newChildren, oldChildren) {
   var shuffle = [];
   var freeCount = newFree.length;
   var freeIndex = 0;
-  var deletedItems = 0; // 遍历变化前的子节点，并找出变化后依然存在的
-  // O(N) time,
+  var deletedItems = 0; // 遍历变化前的子节点，对比变化后子节点的 key 值
+  // 并按照对应顺序将变化后子节点的索引放入 shuffle 数组中
 
   for (var i = 0; i < oldChildren.length; i++) {
     var oldItem = oldChildren[i];
@@ -275,40 +276,37 @@ function sortChildren(newChildren, oldChildren) {
         itemIndex = newKeys[oldItem.key];
         shuffle.push(newChildren[itemIndex]);
       } else {
-        // Remove old keyed items
-        itemIndex = i - deletedItems++;
+        // 移除变化后节点不存在的 key 值
+        deletedItems++;
         shuffle.push(null);
       }
     } else {
-      // Match the item in a with the next free item in b
       if (freeIndex < freeCount) {
+        // 匹配变化前后的无 key 子节点
         itemIndex = newFree[freeIndex++];
         shuffle.push(newChildren[itemIndex]);
       } else {
-        // There are no free items in b to match with
-        // the free items in a, so the extra free nodes
-        // are deleted.
-        itemIndex = i - deletedItems++;
+        // 如果变化后子节点中已经不存在无 key 项
+        // 变化前的无 key 项也是多余项，故删除
+        deletedItems++;
         shuffle.push(null);
       }
     }
   }
 
-  var lastFreeIndex = freeIndex >= newFree.length ? newChildren.length : newFree[freeIndex]; // Iterate through b and append any new keys
-  // O(M) time
+  var lastFreeIndex = freeIndex >= newFree.length ? newChildren.length : newFree[freeIndex]; // 遍历变化后的子节点，将所有之前不存在的 key 对应的子节点放入 shuffle 数组中
 
   for (var j = 0; j < newChildren.length; j++) {
     var newItem = newChildren[j];
 
     if (newItem.key) {
       if (!oldKeys.hasOwnProperty(newItem.key)) {
-        // Add any new keyed items
-        // We are adding new items to the end and then sorting them
-        // in place. In future we should insert new items in place.
+        // 添加所有新的 key 值对应的子节点
+        // 之后还会重新排序，我们会在适当的地方插入新增节点
         shuffle.push(newItem);
       }
     } else if (j >= lastFreeIndex) {
-      // Add any leftover non-keyed items
+      // 添加剩余的无 key 子节点
       shuffle.push(newItem);
     }
   }
@@ -318,21 +316,25 @@ function sortChildren(newChildren, oldChildren) {
   var inserts = [];
   var simulateIndex = 0;
   var simulateItem;
+  var wantedItem;
 
   for (var k = 0; k < newChildren.length;) {
-    var wantedItem = newChildren[k];
-    simulateItem = simulate[simulateIndex]; // remove items
+    wantedItem = newChildren[k]; // 期待元素: 表示变化后 k 的子节点
+
+    simulateItem = simulate[simulateIndex]; // 模拟元素: 表示变化前 k 位置的子节点
+    // 删除在变化后不存在的子节点
 
     while (simulateItem === null && simulate.length) {
       removes.push(remove(simulate, simulateIndex, null));
       simulateItem = simulate[simulateIndex];
     }
 
-    if (!simulateItem || simulateItem.key !== wantedItem.key) {
-      // if we need a key in this position...
+    if (simulateItem.key !== wantedItem.key) {
+      // 期待元素的 key 值存在
       if (wantedItem.key) {
         if (simulateItem && simulateItem.key) {
           // if an insert doesn't put this key in place, it needs to move
+          // 如果一个带 key 的子元素没有在合适的位置，则进行移动
           if (newKeys[simulateItem.key] !== k + 1) {
             removes.push(remove(simulate, simulateIndex, simulateItem.key));
             simulateItem = simulate[simulateIndex]; // if the remove didn't put the wanted item in place, we need to insert it
@@ -360,22 +362,24 @@ function sortChildren(newChildren, oldChildren) {
         }
 
         k++;
-      } // a key in simulate has no matching wanted key, remove it
+      } // 该位置期待元素的 key 值不存在，且模拟元素存在 key 值
       else if (simulateItem && simulateItem.key) {
+          // 变化前该位置的元素
           removes.push(remove(simulate, simulateIndex, simulateItem.key));
         }
     } else {
+      // 如果期待元素和模拟元素 key 值相等，跳到下一个子节点比对
       simulateIndex++;
       k++;
     }
-  } // remove all the remaining nodes from simulate
+  } // 移除所有的模拟元素
 
 
   while (simulateIndex < simulate.length) {
     simulateItem = simulate[simulateIndex];
     removes.push(remove(simulate, simulateIndex, simulateItem && simulateItem.key));
-  } // If the only moves we have are deletes then we can just
-  // let the delete patch remove these items.
+  } // 如果只有删除选项中有值
+  // 将操作直接交个 delete patch
 
 
   if (removes.length === deletedItems && !inserts.length) {
@@ -395,7 +399,8 @@ function sortChildren(newChildren, oldChildren) {
 }
 
 function remove(arr, index, key) {
-  arr.splice(index, 1);
+  arr.splice(index, 1); // 移除数组中指定元素
+
   return {
     from: index,
     key: key
@@ -426,30 +431,30 @@ function keyIndex(children) {
 }
 /**
  *
- * @param {*} patch
- * @param {Array/Object} patches
+ * @param {Array/Object} patch
+ * @param {*} apply
  */
 
 
-function appendPatch(patch, patches) {
+function appendPatch(patch, apply) {
   if (patch) {
-    if (isArray(patches)) {
-      patches.push(patch);
+    if (isArray(patch)) {
+      patch.push(apply);
     } else {
-      patches = [patch, patches];
+      patch = [patch, apply];
     }
 
-    return patches;
+    return patch;
   } else {
-    return patches;
+    return apply;
   }
 }
 
-function diff$1(newNode, oldNode) {}
+function diff$1(oldNode, newNode) {}
 
-function diff$2(newNode, oldNode) {}
+function diff$2(oldNode, newNode) {}
 
-function diff$3(newNode, oldNode) {}
+function diff$3(oldNode, newNode) {}
 
 var name = "magic-dom";
 var version = "1.0.0";
@@ -461,22 +466,22 @@ var config = {
 };
 
 var diffType = config.diffType;
-function diff$4(newNode, oldNode) {
+function diff$4(oldNode, newNode) {
   switch (diffType) {
     case 'virtual-dom':
-      return diff(newNode, oldNode);
+      return diff(oldNode, newNode);
 
     case 'cito':
-      return diff$1(newNode, oldNode);
+      return diff$1(oldNode, newNode);
 
     case 'kivi':
-      return diff$2(newNode, oldNode);
+      return diff$2(oldNode, newNode);
 
     case 'snabbdom':
-      return diff$3(newNode, oldNode);
+      return diff$3(oldNode, newNode);
 
     default:
-      return diff$3(newNode, oldNode);
+      return diff$3(oldNode, newNode);
   }
 }
 
