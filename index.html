@@ -9,10 +9,10 @@
 <body>
   <script type="module">
     import { h, diff } from './dist/magic-dom.js'
-    const left = h("ul", {data: 'a'}, [0, 2, 3].map(i => h("li", {
+    const left = h("ul", {data: 'a'}, [0, 5, 1, 2, 3, 4].map(i => h("li", {
       key: i
     }, i)));
-    const right = h("ul", {data: 'b'}, [3, 2, 1, 0, 'x'].map(i => h("li", {
+    const right = h("ul", {data: 'b'}, [0, 1, 5, 2, 3, 4].map(i => h("li", {
       key: i
     }, i)));
     console.log('left', left);
