@@ -68,8 +68,6 @@ var PATCH = {
   // 移动节点
   VTEXT: 'VTEXT',
   // 文本发生变化
-  UPDATE: 'UPDATE',
-  // 检查属性或子节点是否有变化
   PROPS: 'PROPS',
   SET_PROP: 'SET_PROP',
   // 新增或替换属性
@@ -214,6 +212,10 @@ function diffChildren(oldNode, newNode, patches, patch, index) {
     } else {
       // 相同节点进行比对
       walk(leftNode, rightNode, patches, index);
+    }
+
+    if (isVNode(leftNode) && isArray(leftNode.children)) {
+      index += leftNode.children.length;
     }
   }
 
@@ -406,7 +408,7 @@ function remove(arr, index, key) {
   };
 }
 /**
- * 
+ *
  * @param {Array} children 子节点
  */
 
@@ -493,8 +495,24 @@ function _slicedToArray(arr, i) {
   return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest();
 }
 
+function _toConsumableArray(arr) {
+  return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread();
+}
+
+function _arrayWithoutHoles(arr) {
+  if (Array.isArray(arr)) {
+    for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) arr2[i] = arr[i];
+
+    return arr2;
+  }
+}
+
 function _arrayWithHoles(arr) {
   if (Array.isArray(arr)) return arr;
+}
+
+function _iterableToArray(iter) {
+  if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter);
 }
 
 function _iterableToArrayLimit(arr, i) {
@@ -521,6 +539,10 @@ function _iterableToArrayLimit(arr, i) {
   }
 
   return _arr;
+}
+
+function _nonIterableSpread() {
+  throw new TypeError("Invalid attempt to spread non-iterable instance");
 }
 
 function _nonIterableRest() {
@@ -573,66 +595,183 @@ function setProp(element, key, vlaue) {
 
 /**
  *
- * @param {Element} parent
+ * @param {Element} parentNode
  * @param {Object} patches
  * @param {Number} index
  */
 
-function patch(parent, patches) {
-  var index = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
-  var indices = patchIndices(patches);
+function patch(rootNode, patches) {
   if (!patches) return;
+  var indices = patchIndices(patches);
   if (indices.length === 0) return;
-  var el = parent.childNodes[index];
-  var type = patches.type,
-      newNode = patches.newNode;
+  var nodes = domIndex(rootNode, indices);
+  var _iteratorNormalCompletion = true;
+  var _didIteratorError = false;
+  var _iteratorError = undefined;
 
-  for (var i = 0; i < indices.length; i++) {
-    var nodeIndex = indices[i];
-    rootNode = applyPatch(rootNode, index[nodeIndex], patches[nodeIndex], renderOptions);
+  try {
+    for (var _iterator = indices[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+      var nodeIndex = _step.value;
+      applyPatch(rootNode, nodes[nodeIndex], patches[nodeIndex]);
+    }
+  } catch (err) {
+    _didIteratorError = true;
+    _iteratorError = err;
+  } finally {
+    try {
+      if (!_iteratorNormalCompletion && _iterator["return"] != null) {
+        _iterator["return"]();
+      }
+    } finally {
+      if (_didIteratorError) {
+        throw _iteratorError;
+      }
+    }
   }
-
-  return rootNode;
 }
 
-function applyPatch(type, newNode) {
+function applyPatch(node, patchList) {
+  if (isArray(patchList)) {
+    var _iteratorNormalCompletion2 = true;
+    var _didIteratorError2 = false;
+    var _iteratorError2 = undefined;
+
+    try {
+      for (var _iterator2 = patchList[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+        var _patch = _step2.value;
+        patchOp(node, _patch);
+      }
+    } catch (err) {
+      _didIteratorError2 = true;
+      _iteratorError2 = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion2 && _iterator2["return"] != null) {
+          _iterator2["return"]();
+        }
+      } finally {
+        if (_didIteratorError2) {
+          throw _iteratorError2;
+        }
+      }
+    }
+  } else {
+    patchOp(node, patchList);
+  }
+}
+
+function patchOp(node, patch) {
+  var type = patch.type,
+      vNode = patch.vNode;
+  var parentNode = node.parentNode;
+  var newNode = null;
+
   switch (type) {
-    case PATCH.CREATE:
-      newEl = render(newNode);
-      parent.appendChild(newEl);
+    case PATCH.INSERT:
+      newNode = render(vNode);
+      parentNode.appendChild(newNode);
       break;
 
     case PATCH.REMOVE:
-      parent.removeChild(el);
+      parentNode.removeChild(node);
       break;
 
     case PATCH.REPLACE:
-      newEl = render(newNode);
-      parent.replaceChild(newEl, el);
+      newNode = render(vNode);
+      parentNode.replaceChild(newNode, node);
       break;
 
-    case PATCH.UPDATE:
-      var _patches = patches,
-          props = _patches.props,
-          children = _patches.children;
-      patchProps(el, props);
-      children.forEach(function (child, idx) {
-        patch(el, child, idx);
-      });
+    case PATCH.ORDER:
+      reorderChildren(node, patch);
+      break;
+
+    case PATCH.VTEXT:
+      newNode = document.createTextNode(vNode.text);
+      parentNode.replaceChild(newNode, node);
+      break;
+
+    case PATCH.PROPS:
+      var patches = patch.patches;
+      patchProps(node, patches);
       break;
 
     default:
       break;
   }
 }
+
+function reorderChildren(rootNode, patch) {
+  var moves = patch.moves;
+  var removes = moves.removes,
+      inserts = moves.inserts;
+  var childNodes = rootNode.childNodes;
+  var keyMap = {};
+  var node;
+  var _iteratorNormalCompletion3 = true;
+  var _didIteratorError3 = false;
+  var _iteratorError3 = undefined;
+
+  try {
+    for (var _iterator3 = removes[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+      var remove = _step3.value;
+      node = childNodes[remove.from];
+
+      if (remove.key) {
+        keyMap[remove.key] = node;
+      }
+
+      rootNode.removeChild(node);
+    }
+  } catch (err) {
+    _didIteratorError3 = true;
+    _iteratorError3 = err;
+  } finally {
+    try {
+      if (!_iteratorNormalCompletion3 && _iterator3["return"] != null) {
+        _iterator3["return"]();
+      }
+    } finally {
+      if (_didIteratorError3) {
+        throw _iteratorError3;
+      }
+    }
+  }
+
+  var length = childNodes.length;
+  var _iteratorNormalCompletion4 = true;
+  var _didIteratorError4 = false;
+  var _iteratorError4 = undefined;
+
+  try {
+    for (var _iterator4 = inserts[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+      var insert = _step4.value;
+      node = keyMap[insert.key]; // this is the weirdest bug i've ever seen in webkit
+
+      rootNode.insertBefore(node, insert.to >= length++ ? null : childNodes[insert.to]);
+    }
+  } catch (err) {
+    _didIteratorError4 = true;
+    _iteratorError4 = err;
+  } finally {
+    try {
+      if (!_iteratorNormalCompletion4 && _iterator4["return"] != null) {
+        _iterator4["return"]();
+      }
+    } finally {
+      if (_didIteratorError4) {
+        throw _iteratorError4;
+      }
+    }
+  }
+}
 /**
  *
- * @param {Element} element
+ * @param {Element} node
  * @param {Object} patches
  */
 
 
-function patchProps(element, patches) {
+function patchProps(node, patches) {
   patches.forEach(function (patch) {
     var type = patch.type,
         key = patch.key,
@@ -640,11 +779,11 @@ function patchProps(element, patches) {
 
     switch (type) {
       case PATCH.SET_PROP:
-        setProp(element, key, value);
+        setProp(node, key, value);
         break;
 
       case PATCH.REMOVE_PROP:
-        removeProp(element, key);
+        removeProp(node, key);
         break;
 
       default:
@@ -671,6 +810,46 @@ function patchIndices(patches) {
   }
 
   return indices;
+}
+
+function domIndex(rootNode) {
+  var nodes = [rootNode];
+  var children = rootNode.childNodes;
+
+  if (children.length) {
+    var _iteratorNormalCompletion5 = true;
+    var _didIteratorError5 = false;
+    var _iteratorError5 = undefined;
+
+    try {
+      for (var _iterator5 = children[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
+        var child = _step5.value;
+
+        if (child.nodeType === 1 || child.nodeType === 3) {
+          if (child.nodeType === 1) {
+            nodes.push.apply(nodes, _toConsumableArray(domIndex(child)));
+          } else if (child.nodeType === 3) {
+            nodes.push(child);
+          }
+        }
+      }
+    } catch (err) {
+      _didIteratorError5 = true;
+      _iteratorError5 = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion5 && _iterator5["return"] != null) {
+          _iterator5["return"]();
+        }
+      } finally {
+        if (_didIteratorError5) {
+          throw _iteratorError5;
+        }
+      }
+    }
+  }
+
+  return nodes;
 }
 
 export { diff$4 as diff, h, patch, render, types };
