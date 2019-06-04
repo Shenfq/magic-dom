@@ -612,7 +612,7 @@ function patch(rootNode, patches) {
   try {
     for (var _iterator = indices[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
       var nodeIndex = _step.value;
-      applyPatch(rootNode, nodes[nodeIndex], patches[nodeIndex]);
+      applyPatch(nodes[nodeIndex], patches[nodeIndex]);
     }
   } catch (err) {
     _didIteratorError = true;

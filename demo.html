@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { h, diff, render, patch } from './dist/magic-dom.js'
+    
+    class Component {
+      vdom = null // 组件的虚拟DOM表示
+      $el = null // 虚拟DOM生成的真实节点
+
+      state = {
+        text: 'Initialize the Component'
+      }
+
+      // 手动修改组件state
+      setState(newState) {
+        this.state = {
+          ...this.state,
+          ...newState
+        }
+        const newVdom = this.render()
+        const patches = diff(this.vdom, newVdom)
+        console.log(patches)
+        patch(this.$el, patches)
+      }
+
+      changeText(text) {
+        this.setState({ text })
+      }
+
+      render() {
+        const { text } = this.state
+        return h('div', {}, text)
+      }
+    }
+
+    function createElement(app, component) {
+      const vdom = component.render()
+      component.vdom = vdom
+      component.$el = render(vdom) // 将虚拟 DOM 转换为真实 DOM
+      app.appendChild(component.$el)
+    }
+
+    const app = document.getElementById('app')
+    const component = new Component
+    createElement(app, component)
+
+    let count = 0
+    setTimeout(() => {
+      component.changeText(++count)
+    }, 1000)
+  </script>
+</body>
+</html>
