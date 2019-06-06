@@ -6,6 +6,8 @@ function isType(type) {
 var isString = isType('String');
 var isNumber = isType('Number');
 var isArray = Array.isArray;
+var isObject = isType('Object');
+var isFunction = isType('Function');
 function isVNode(vdom) {
   return vdom.type === 'VNode';
 }
@@ -470,6 +472,25 @@ var config = {
   name: name,
   diffType: 'virtual-dom'
 };
+function get(key) {
+  var c = config;
+  key.split('.').forEach(function (name) {
+    c = c[name];
+  });
+  return c;
+}
+function set(key, value) {
+  var c = config;
+  var keyArr = key.split('.');
+  var length = keyArr.length - 1;
+  keyArr.forEach(function (name, index) {
+    if (index < length) {
+      c = c[name];
+    } else {
+      c[name] = value;
+    }
+  });
+}
 
 var diffType = config.diffType;
 function diff$4(oldNode, newNode) {
@@ -852,4 +873,20 @@ function domIndex(rootNode) {
   return nodes;
 }
 
-export { diff$4 as diff, h, patch, render, types };
+
+
+var index = /*#__PURE__*/Object.freeze({
+  config: config,
+  get: get,
+  set: set,
+  isType: isType,
+  isString: isString,
+  isNumber: isNumber,
+  isArray: isArray,
+  isObject: isObject,
+  isFunction: isFunction,
+  isVNode: isVNode,
+  isVText: isVText
+});
+
+export { diff$4 as diff, h, patch, render, types, index as utils };

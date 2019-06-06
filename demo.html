@@ -51,10 +51,9 @@
     const app = document.getElementById('app')
     const component = new Component
     createElement(app, component)
-
-    let count = 0
+                                                                                                           
     setTimeout(() => {
-      component.changeText(++count)
+      component.changeText('change text')
     }, 1000)
   </script>
 </body>

@@ -1,19 +1,23 @@
 import test from 'ava'
+import { h, diff, patch, render, types, utils } from '../../dist/magic-dom'
 
-import { h, diff } from '../../dist/magic-dom'
-import { url } from 'inspector'
+const {
+  isVNode, isVText
+} = utils
 
-/* test('h', t => {
-  const vdom = <div>
-    <p>hello <del>world</del></p>
-    <p>hello <b>world</b></p>
-    <p>hello world <span>!!!</span></p>
-  </div>
-  
-  console.info(vdom)
-  
-  t.pass()
-}) */
+test('h', t => {
+  const vdom = <div id="app">hello world</div>
+  const {
+    tag, 
+    props: { id }, 
+    children: [ child ] 
+  } = vdom
+  t.true(isVNode(vdom))
+  t.true(isVText(child))
+  t.is(tag, 'div')
+  t.is(id, 'app')
+  t.is(child.text, 'hello world')
+})
 
 test('diff', t => {
   const array = [1, 2, 3, 4, 5]
@@ -31,8 +35,7 @@ test('diff', t => {
       ))}
     </ul>
   )
-  console.log('left', left)
-  console.log('right', right)
   const patches = diff(left, right)
-  console.info('patches', JSON.stringify(patches))
+  
+  t.pass()
 })
