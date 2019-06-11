@@ -9,14 +9,22 @@
 <body>
   <div id="app"></div>
   <script type="module">
-    import { h, diff, render, patch } from './dist/magic-dom.js'
+    import { h, diff, render, patch, utils } from './dist/magic-dom.js'
+
+    const { set } = utils
+
+    set('diffType', 'cito')
     
     class Component {
       vdom = null // 组件的虚拟DOM表示
       $el = null // 虚拟DOM生成的真实节点
 
       state = {
-        text: 'Initialize the Component'
+        props: {
+          className: 'box',
+          data: 'infomation'
+        },
+        list: ['a', 'b', 'c', 'd']
       }
 
       // 手动修改组件state
@@ -31,13 +39,15 @@
         patch(this.$el, patches)
       }
 
-      changeText(text) {
-        this.setState({ text })
+      changeList(list) {
+        this.setState({
+          list 
+        })
       }
 
       render() {
-        const { text } = this.state
-        return h('div', {}, text)
+        const { list, props } = this.state
+        return h('div', props, list.map(t => h('p', {key: t}, t)))
       }
     }
 
@@ -53,7 +63,7 @@
     createElement(app, component)
                                                                                                            
     setTimeout(() => {
-      component.changeText('change text')
+      component.changeList(['a', 'c', 'b', 'd'])
     }, 1000)
   </script>
 </body>

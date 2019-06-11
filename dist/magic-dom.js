@@ -458,7 +458,294 @@ function appendPatch(patch, apply) {
   }
 }
 
-function diff$1(oldNode, newNode) {}
+function diff$1(oldNode, newNode) {
+  var patches = [];
+  updateNode(oldNode, newNode, patches, 0);
+  return patches;
+}
+
+function updateNode(oldNode, node, patches, index) {
+  if (node === oldNode) {
+    return;
+  }
+
+  var patch = patches[index];
+  var tag = node.tag;
+
+  if (!oldNode) {
+    patch = appendPatch$1(patch, {
+      type: PATCH.INSERT,
+      vNode: newNode
+    });
+  } else if (!node) {
+    patch = appendPatch$1(patch, {
+      type: PATCH.REMOVE,
+      vNode: null
+    });
+  } else if (oldNode.tag !== tag) {
+    appendPatch$1(patch, {
+      type: PATCH.REPLACE,
+      vNode: node
+    });
+  } else {
+    var oldChildren = oldNode.children;
+    var children = node.children;
+
+    if (children !== oldChildren) {
+      patch = updateChildren(oldChildren, children, patches, patch, index);
+    }
+
+    var oldProps = oldNode.props;
+    var props = node.props;
+
+    if (props !== oldProps) {
+      var propsPatch = updateAttributes(props, oldProps);
+
+      if (propsPatch && propsPatch.length > 0) {
+        patch = appendPatch$1(patch, {
+          type: PATCH.PROPS,
+          patches: propsPatch
+        });
+      }
+    }
+  }
+
+  if (patch) {
+    patches[index] = patch;
+  }
+}
+
+function updateAttributes(newProps, oldProps) {
+  var patches = [];
+  var props = Object.assign({}, newProps, oldProps);
+  Object.keys(props).forEach(function (key) {
+    var newVal = newProps[key];
+    var oldVal = oldProps[key];
+
+    if (!newVal) {
+      patches.push({
+        type: PATCH.REMOVE_PROP,
+        key: key,
+        value: oldVal
+      });
+    }
+
+    if (oldVal === undefined || newVal !== oldVal) {
+      patches.push({
+        type: PATCH.SET_PROP,
+        key: key,
+        value: newVal
+      });
+    }
+  });
+  return patches;
+}
+
+function updateChildren(oldChildren, children, patches, patch, index) {
+  var oldChildrenLength = oldChildren.length; // 如果没有旧子节点，插入新的节点
+
+  if (oldChildrenLength === 0) {
+    var _iteratorNormalCompletion = true;
+    var _didIteratorError = false;
+    var _iteratorError = undefined;
+
+    try {
+      for (var _iterator = children[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+        var child = _step.value;
+        patch = appendPatch$1(patch, {
+          type: PATCH.INSERT,
+          vNode: child
+        });
+      }
+    } catch (err) {
+      _didIteratorError = true;
+      _iteratorError = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion && _iterator["return"] != null) {
+          _iterator["return"]();
+        }
+      } finally {
+        if (_didIteratorError) {
+          throw _iteratorError;
+        }
+      }
+    }
+
+    return patch;
+  }
+
+  var ChildrenLength = children.length; // 如果没有新子节点，删除旧的节点
+
+  if (ChildrenLength === 0) {
+    var idx = index;
+    var _iteratorNormalCompletion2 = true;
+    var _didIteratorError2 = false;
+    var _iteratorError2 = undefined;
+
+    try {
+      for (var _iterator2 = oldChildren[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+        var _child = _step2.value;
+        idx++;
+        patches[idx] = {
+          type: PATCH.REMOVE,
+          vNode: null
+        };
+
+        if (isVNode(_child) && isArray(_child.children)) {
+          idx += _child.children.length;
+        }
+      }
+    } catch (err) {
+      _didIteratorError2 = true;
+      _iteratorError2 = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion2 && _iterator2["return"] != null) {
+          _iterator2["return"]();
+        }
+      } finally {
+        if (_didIteratorError2) {
+          throw _iteratorError2;
+        }
+      }
+    }
+
+    return patch;
+  }
+
+  var oldEndIndex = oldChildrenLength - 1;
+  var endIndex = ChildrenLength - 1;
+  var oldStartIndex = 0;
+  var startIndex = 0;
+  var successful = true;
+  var nextChild;
+  var indexMap = getVNodeIndexMap(oldChildren, index);
+  /* eslint-disable no-labels */
+
+  outer: while (successful && oldStartIndex <= oldEndIndex && startIndex <= endIndex) {
+    successful = false;
+    var oldStartChild = oldChildren[oldStartIndex];
+    var startChild = children[startIndex];
+
+    while (oldStartChild.key === startChild.key) {
+      updateNode(oldStartChild, startChild, pathces, indexMap[oldStartChild]);
+      oldStartIndex++;
+      startIndex++;
+
+      if (oldStartIndex > oldEndIndex || startIndex > endIndex) {
+        break outer;
+      }
+
+      oldStartChild = oldChildren[oldStartIndex];
+      startChild = children[startIndex];
+      successful = true;
+    }
+
+    var oldEndChild = oldChildren[oldEndIndex];
+    var endChild = children[endIndex];
+
+    while (oldEndChild.key === endChild.key) {
+      updateNode(oldEndChild, endChild, pathces, indexMap[oldEndChild]);
+      oldEndIndex--;
+      endIndex--;
+
+      if (oldStartIndex > oldEndIndex || startIndex > endIndex) {
+        break outer;
+      }
+
+      oldEndChild = oldChildren[oldEndIndex];
+      endChild = children[endIndex];
+      successful = true;
+    }
+
+    while (oldStartChild.key === endChild.key) {
+      nextChild = endIndex + 1 < ChildrenLength ? children[endIndex + 1] : null;
+      updateNode(oldStartChild, endChild, pathces, indexMap[oldStartChild]); // moveChild(endChild, nextChild)
+
+      oldStartIndex++;
+      endIndex--;
+
+      if (oldStartIndex > oldEndIndex || startIndex > endIndex) {
+        break outer;
+      }
+
+      oldStartChild = oldChildren[oldStartIndex];
+      endChild = children[endIndex];
+      successful = true;
+    }
+
+    while (oldEndChild.key === startChild.key) {
+      nextChild = oldStartIndex < oldChildrenLength ? oldChildren[oldStartIndex] : null;
+      updateNode(oldEndChild, endChild, pathces, indexMap[oldEndChild]); // moveChild(startChild, nextChild)
+
+      oldEndIndex--;
+      startIndex++;
+
+      if (oldStartIndex > oldEndIndex || startIndex > endIndex) {
+        break outer;
+      }
+
+      oldEndChild = oldChildren[oldEndIndex];
+      startChild = children[startIndex];
+      successful = true;
+    }
+  }
+}
+
+function getVNodeIndexMap(children, index, map) {
+  var indexMap = map || new Map();
+  var _iteratorNormalCompletion3 = true;
+  var _didIteratorError3 = false;
+  var _iteratorError3 = undefined;
+
+  try {
+    for (var _iterator3 = children[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+      var child = _step3.value;
+      index++;
+      indexMap.set(child, index);
+
+      if (isArray(child.children)) {
+        getVNodeIndexMap(child.children, index, indexMap);
+      }
+    }
+  } catch (err) {
+    _didIteratorError3 = true;
+    _iteratorError3 = err;
+  } finally {
+    try {
+      if (!_iteratorNormalCompletion3 && _iterator3["return"] != null) {
+        _iterator3["return"]();
+      }
+    } finally {
+      if (_didIteratorError3) {
+        throw _iteratorError3;
+      }
+    }
+  }
+
+  return indexMap;
+}
+/**
+ *
+ * @param {Array/Object} patch
+ * @param {*} apply
+ */
+
+
+function appendPatch$1(patch, apply) {
+  if (patch) {
+    if (isArray(patch)) {
+      patch.push(apply);
+    } else {
+      patch = [patch, apply];
+    }
+
+    return patch;
+  } else {
+    return apply;
+  }
+}
 
 function diff$2(oldNode, newNode) {}
 
@@ -492,8 +779,10 @@ function set(key, value) {
   });
 }
 
-var diffType = config.diffType;
 function diff$4(oldNode, newNode) {
+  var diffType = config.diffType;
+  console.log(diffType);
+
   switch (diffType) {
     case 'virtual-dom':
       return diff(oldNode, newNode);
@@ -586,6 +875,7 @@ function render(vdom) {
   var element = document.createElement(tag);
   setProps(element, props);
   children.map(render).forEach(element.appendChild.bind(element));
+  vdom.dom = element;
   return element;
 }
 /**
