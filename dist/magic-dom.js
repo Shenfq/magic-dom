@@ -68,6 +68,8 @@ var PATCH = {
   // 删除原节点
   ORDER: 'ORDER',
   // 移动节点
+  MOVE: 'MOVE',
+  // 移动节点
   VTEXT: 'VTEXT',
   // 文本发生变化
   PROPS: 'PROPS',
@@ -459,63 +461,139 @@ function appendPatch(patch, apply) {
 }
 
 function diff$1(oldNode, newNode) {
-  var patches = [];
-  updateNode(oldNode, newNode, patches, 0);
-  return patches;
+  updateNode(oldNode, newNode, oldNode.dom.parentNode);
+  return [];
 }
 
-function updateNode(oldNode, node, patches, index) {
+function updateNode(oldNode, node, domParent) {
   if (node === oldNode) {
     return;
   }
 
-  var patch = patches[index];
   var tag = node.tag;
 
-  if (!oldNode) {
-    patch = appendPatch$1(patch, {
-      type: PATCH.INSERT,
-      vNode: newNode
-    });
-  } else if (!node) {
-    patch = appendPatch$1(patch, {
-      type: PATCH.REMOVE,
-      vNode: null
-    });
-  } else if (oldNode.tag !== tag) {
-    appendPatch$1(patch, {
-      type: PATCH.REPLACE,
-      vNode: node
-    });
+  if (oldNode.tag !== tag) {
+    // 标签不一致，创建新节点
+    createNode(node, domParent, oldNode, true);
   } else {
     var oldChildren = oldNode.children;
     var children = node.children;
+    var domNode = oldNode.dom;
+    node.dom = domNode; // 子节点对比
 
     if (children !== oldChildren) {
-      patch = updateChildren(oldChildren, children, patches, patch, index);
+      updateChildren(domNode, node, oldChildren, children);
     }
 
     var oldProps = oldNode.props;
-    var props = node.props;
+    var props = node.props; // 属性对比
 
     if (props !== oldProps) {
-      var propsPatch = updateAttributes(props, oldProps);
-
-      if (propsPatch && propsPatch.length > 0) {
-        patch = appendPatch$1(patch, {
-          type: PATCH.PROPS,
-          patches: propsPatch
-        });
-      }
+      updateAttributes(domNode, props, oldProps);
     }
-  }
-
-  if (patch) {
-    patches[index] = patch;
   }
 }
 
-function updateAttributes(newProps, oldProps) {
+function createNode(node, domParent, nextChild, replace) {
+  var domNode;
+
+  if (isVNode(node)) {
+    var children = node.children;
+    var props = node.props;
+    domNode = document.createElement(node.tag);
+    node.dom = domNode;
+
+    if (children.length > 0) {
+      createAllchildren(domNode, children);
+    }
+
+    if (props) {
+      updateAttributes(domNode, props);
+    }
+  } else if (isVText(node)) {
+    domNode = document.createTextNode(node.text);
+    node.dom = domNode;
+  }
+
+  if (domParent && domNode) {
+    insertChild(domParent, domNode, nextChild, replace);
+  }
+}
+
+function createAllchildren(domNode, children) {
+  var _iteratorNormalCompletion = true;
+  var _didIteratorError = false;
+  var _iteratorError = undefined;
+
+  try {
+    for (var _iterator = children[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+      var child = _step.value;
+      createNode(child, domNode);
+    }
+  } catch (err) {
+    _didIteratorError = true;
+    _iteratorError = err;
+  } finally {
+    try {
+      if (!_iteratorNormalCompletion && _iterator["return"] != null) {
+        _iterator["return"]();
+      }
+    } finally {
+      if (_didIteratorError) {
+        throw _iteratorError;
+      }
+    }
+  }
+}
+
+function removeAllChildren(domNode, children) {
+  removeChildren(domNode, children, 0, children.length);
+}
+
+function removeChildren(domNode, children, i, to) {
+  for (; i < to; i++) {
+    domNode.removeChild(children[i]);
+  }
+}
+
+function insertChild(domParent, domNode, nextChild, replace) {
+  if (nextChild) {
+    var domNextChild = nextChild.dom;
+
+    if (replace) {
+      domParent.replaceChild(domNode, domNextChild);
+    } else {
+      domParent.insertBefore(domNode, domNextChild);
+    }
+  } else {
+    domParent.appendChild(domNode);
+  }
+}
+
+function setTextContent(domNode, text) {
+  if (text) {
+    domNode.innerText = text;
+  } else {
+    while (domNode.firstChild) {
+      domNode.removeChild(domNode.firstChild);
+    }
+  }
+}
+
+function moveChild(domNode, child, nextChild) {
+  var domRefChild = nextChild && nextChild.dom;
+  var domChild = child.dom;
+
+  if (domChild !== domRefChild) {
+    if (domRefChild) {
+      domNode.insertBefore(domChild, domRefChild);
+    } else {
+      domNode.appendChild(domChild);
+    }
+  }
+}
+
+function updateAttributes(domNode, newProps, oldProps) {
   var patches = [];
   var props = Object.assign({}, newProps, oldProps);
   Object.keys(props).forEach(function (key) {
@@ -523,104 +601,62 @@ function updateAttributes(newProps, oldProps) {
     var oldVal = oldProps[key];
 
     if (!newVal) {
-      patches.push({
-        type: PATCH.REMOVE_PROP,
-        key: key,
-        value: oldVal
-      });
+      domNode.removeAttribute(key === 'className' ? 'class' : key);
     }
 
     if (oldVal === undefined || newVal !== oldVal) {
-      patches.push({
-        type: PATCH.SET_PROP,
-        key: key,
-        value: newVal
-      });
+      domNode.setAttribute(key === 'className' ? 'class' : key, newVal);
     }
   });
   return patches;
 }
 
-function updateChildren(oldChildren, children, patches, patch, index) {
+function updateChildren(domNode, node, oldChildren, children) {
   var oldChildrenLength = oldChildren.length; // 如果没有旧子节点，插入新的节点
 
   if (oldChildrenLength === 0) {
-    var _iteratorNormalCompletion = true;
-    var _didIteratorError = false;
-    var _iteratorError = undefined;
-
-    try {
-      for (var _iterator = children[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-        var child = _step.value;
-        patch = appendPatch$1(patch, {
-          type: PATCH.INSERT,
-          vNode: child
-        });
-      }
-    } catch (err) {
-      _didIteratorError = true;
-      _iteratorError = err;
-    } finally {
-      try {
-        if (!_iteratorNormalCompletion && _iterator["return"] != null) {
-          _iterator["return"]();
-        }
-      } finally {
-        if (_didIteratorError) {
-          throw _iteratorError;
-        }
-      }
-    }
-
-    return patch;
+    createAllchildren(domNode, children);
+    return;
   }
 
-  var ChildrenLength = children.length; // 如果没有新子节点，删除旧的节点
+  var childrenLength = children.length; // 如果没有新子节点，删除旧的节点
 
-  if (ChildrenLength === 0) {
-    var idx = index;
-    var _iteratorNormalCompletion2 = true;
-    var _didIteratorError2 = false;
-    var _iteratorError2 = undefined;
+  if (childrenLength === 0) {
+    removeAllChildren(domNode, oldChildren);
+    return;
+  } else if (childrenLength < 2) {
+    // 处理一个子节点的情况
+    var child = children[0];
 
-    try {
-      for (var _iterator2 = oldChildren[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-        var _child = _step2.value;
-        idx++;
-        patches[idx] = {
-          type: PATCH.REMOVE,
-          vNode: null
-        };
+    if (isVText(child)) {
+      var text = child.text;
 
-        if (isVNode(_child) && isArray(_child.children)) {
-          idx += _child.children.length;
+      if (childrenLength === oldChildrenLength) {
+        var oldChild = oldChildren[0];
+
+        if (text === oldChild.text) {
+          return;
+        } else {
+          domNode.firstChild.nodeValue = text;
+          return;
         }
       }
-    } catch (err) {
-      _didIteratorError2 = true;
-      _iteratorError2 = err;
-    } finally {
-      try {
-        if (!_iteratorNormalCompletion2 && _iterator2["return"] != null) {
-          _iterator2["return"]();
-        }
-      } finally {
-        if (_didIteratorError2) {
-          throw _iteratorError2;
-        }
-      }
+
+      setTextContent(domNode, text);
+    } else if (oldChildrenLength < 2) {
+      var _oldChild = oldChildren[0];
+      var _child = children[0];
+      updateNode(_oldChild, _child, domNode);
+      return;
     }
-
-    return patch;
   }
 
   var oldEndIndex = oldChildrenLength - 1;
-  var endIndex = ChildrenLength - 1;
+  var endIndex = childrenLength - 1;
   var oldStartIndex = 0;
   var startIndex = 0;
   var successful = true;
   var nextChild;
-  var indexMap = getVNodeIndexMap(oldChildren, index);
   /* eslint-disable no-labels */
 
   outer: while (successful && oldStartIndex <= oldEndIndex && startIndex <= endIndex) {
@@ -629,7 +665,7 @@ function updateChildren(oldChildren, children, patches, patch, index) {
     var startChild = children[startIndex];
 
     while (oldStartChild.key === startChild.key) {
-      updateNode(oldStartChild, startChild, pathces, indexMap[oldStartChild]);
+      updateNode(oldStartChild, startChild, domNode);
       oldStartIndex++;
       startIndex++;
 
@@ -646,7 +682,7 @@ function updateChildren(oldChildren, children, patches, patch, index) {
     var endChild = children[endIndex];
 
     while (oldEndChild.key === endChild.key) {
-      updateNode(oldEndChild, endChild, pathces, indexMap[oldEndChild]);
+      updateNode(oldEndChild, endChild, domNode);
       oldEndIndex--;
       endIndex--;
 
@@ -660,9 +696,9 @@ function updateChildren(oldChildren, children, patches, patch, index) {
     }
 
     while (oldStartChild.key === endChild.key) {
-      nextChild = endIndex + 1 < ChildrenLength ? children[endIndex + 1] : null;
-      updateNode(oldStartChild, endChild, pathces, indexMap[oldStartChild]); // moveChild(endChild, nextChild)
-
+      nextChild = endIndex + 1 < childrenLength ? children[endIndex + 1] : null;
+      updateNode(oldStartChild, endChild, domNode);
+      moveChild(domNode, endChild, nextChild);
       oldStartIndex++;
       endIndex--;
 
@@ -677,8 +713,8 @@ function updateChildren(oldChildren, children, patches, patch, index) {
 
     while (oldEndChild.key === startChild.key) {
       nextChild = oldStartIndex < oldChildrenLength ? oldChildren[oldStartIndex] : null;
-      updateNode(oldEndChild, endChild, pathces, indexMap[oldEndChild]); // moveChild(startChild, nextChild)
-
+      updateNode(oldEndChild, startChild, domNode);
+      moveChild(domNode, startChild, nextChild);
       oldEndIndex--;
       startIndex++;
 
@@ -691,59 +727,57 @@ function updateChildren(oldChildren, children, patches, patch, index) {
       successful = true;
     }
   }
-}
 
-function getVNodeIndexMap(children, index, map) {
-  var indexMap = map || new Map();
-  var _iteratorNormalCompletion3 = true;
-  var _didIteratorError3 = false;
-  var _iteratorError3 = undefined;
+  if (oldStartIndex > oldEndIndex) {
+    nextChild = endIndex + 1 < childrenLength ? children[endIndex + 1] : null;
 
-  try {
-    for (var _iterator3 = children[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-      var child = _step3.value;
-      index++;
-      indexMap.set(child, index);
-
-      if (isArray(child.children)) {
-        getVNodeIndexMap(child.children, index, indexMap);
-      }
+    for (var i = startIndex; i <= endIndex; i++) {
+      createNode(children[i], domNode, nextChild);
     }
-  } catch (err) {
-    _didIteratorError3 = true;
-    _iteratorError3 = err;
-  } finally {
-    try {
-      if (!_iteratorNormalCompletion3 && _iterator3["return"] != null) {
-        _iterator3["return"]();
-      }
-    } finally {
-      if (_didIteratorError3) {
-        throw _iteratorError3;
-      }
-    }
-  }
-
-  return indexMap;
-}
-/**
- *
- * @param {Array/Object} patch
- * @param {*} apply
- */
-
-
-function appendPatch$1(patch, apply) {
-  if (patch) {
-    if (isArray(patch)) {
-      patch.push(apply);
-    } else {
-      patch = [patch, apply];
-    }
-
-    return patch;
+  } else if (startIndex > endIndex) {
+    removeChildren(domNode, oldChildren, oldStartIndex, oldEndIndex + 1);
   } else {
-    return apply;
+    var _i, _oldChild2, _nextChild, _child2;
+
+    var oldNextChild = oldChildren[oldEndIndex + 1];
+    var oldChildrenMap = {};
+
+    for (_i = oldEndIndex; _i >= oldStartIndex; _i--) {
+      _oldChild2 = oldChildren[_i];
+      _oldChild2.next = oldNextChild;
+      oldChildrenMap[_oldChild2.key] = _oldChild2;
+      oldNextChild = _oldChild2;
+    }
+
+    _nextChild = endIndex + 1 < childrenLength ? children[endIndex + 1] : null;
+
+    for (_i = endIndex; _i >= startIndex; _i--) {
+      _child2 = children[_i];
+      var key = _child2.key;
+      _oldChild2 = oldChildrenMap[key];
+
+      if (_oldChild2) {
+        oldChildrenMap[key] = null;
+        oldNextChild = _oldChild2.next;
+        updateNode(_oldChild2, _child2, domNode);
+
+        if (domNode.nextSibling !== (_nextChild && _nextChild.dom)) {
+          moveChild(domNode, _child2, _nextChild);
+        }
+      } else {
+        createNode(_child2, domNode, _nextChild);
+      }
+
+      _nextChild = _child2;
+    }
+
+    for (_i = oldStartIndex; _i <= oldEndIndex; _i++) {
+      _oldChild2 = oldChildren[_i];
+
+      if (oldChildrenMap[_oldChild2.key] !== null) {
+        domNode.removeChild(_oldChild2);
+      }
+    }
   }
 }
 
