@@ -12,8 +12,6 @@
     import { h, diff, render, patch, utils } from './dist/magic-dom.js'
 
     const { set } = utils
-
-    set('diffType', 'snabbdom')
     
     class Component {
       vdom = null // 组件的虚拟DOM表示
@@ -35,7 +33,6 @@
         }
         const newVdom = this.render()
         const patches = diff(this.vdom, newVdom)
-        console.log(patches)
         patches && patch(this.$el, patches)
         this.vdom = newVdom
       }
@@ -64,17 +61,26 @@
     const diffs = []
 
     setTimeout(() => {
-      const list = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+        set('diffType', 'cito')
+      const list = ['b', 'c', 'd', 'e', 'f', 'g']
         .sort((a, b) => Math.random() * 2 - 1)
       console.log(list)
       component.changeList(list)
     }, 500)
     setTimeout(() => {
-      const list = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+      set('diffType', 'snabbdom')
+      const list = ['a', 'c', 'd', 'e', 'f', 'g']
         .sort((a, b) => Math.random() * 2 - 1)
       console.log(list)
       component.changeList(list)
     }, 1000)
+    setTimeout(() => {
+      set('diffType', 'virtual-dom')
+      const list = ['a', 'b', 'd', 'e', 'f', 'g']
+        .sort((a, b) => Math.random() * 2 - 1)
+      console.log(list)
+      component.changeList(list)
+    }, 1500)
   </script>
 </body>
 </html>
