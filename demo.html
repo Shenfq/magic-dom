@@ -13,7 +13,7 @@
 
     const { set } = utils
 
-    set('diffType', 'cito')
+    set('diffType', 'snabbdom')
     
     class Component {
       vdom = null // 组件的虚拟DOM表示
@@ -36,13 +36,12 @@
         const newVdom = this.render()
         const patches = diff(this.vdom, newVdom)
         console.log(patches)
-        patch(this.$el, patches)
+        patches && patch(this.$el, patches)
+        this.vdom = newVdom
       }
 
       changeList(list) {
-        this.setState({
-          list 
-        })
+        this.setState({ list })
       }
 
       render() {
@@ -61,9 +60,20 @@
     const app = document.getElementById('app')
     const component = new Component
     createElement(app, component)
-                                                                                                           
+       
+    const diffs = []
+
     setTimeout(() => {
-      component.changeList(['s', 'd', 'c', 'b', 'f', 'a', 'e'])
+      const list = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+        .sort((a, b) => Math.random() * 2 - 1)
+      console.log(list)
+      component.changeList(list)
+    }, 500)
+    setTimeout(() => {
+      const list = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+        .sort((a, b) => Math.random() * 2 - 1)
+      console.log(list)
+      component.changeList(list)
     }, 1000)
   </script>
 </body>
